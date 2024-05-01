@@ -1,0 +1,268 @@
+---
+title: "Stat 3303 Project"
+author: "Nathan Johnson"
+date: "`r Sys.Date()`"
+output: pdf_document
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+# Introduction
+
+Summary of prompt: 
+
+In response to K9C9, medical researchers have developed a diagnostic test called "EZK." The test is not perfect and gives false results sometimes. In this paper, we'll be looking at analyzed data related to this new diagnostic test.
+
+Firstly, we should define our model:
+
+
+Let Y = {$Y_{sc}: s = 1,...,N^S, c = 1,...N^C$} where $Y_{sc}$ is the infected outcome of the diagnostic for subject s located in country c and $x_{sc}$ is the corresponding result of the EZK test. $x_{sc} = 0$ means subject s in country c was reported to not have K9C9 by the EZK test while $x_{sc} = 1$ means subject s in country c was reported to have K9C9 by the EZK test.
+
+We'll assume:
+$$p(Y\mid\alpha,\beta) = \prod_{c=1}^{N^C}\prod_{s=1}^{N^S}p(Y_{sc}\mid\alpha_c,\beta_c)$$
+where
+$$Y_{sc} \mid \alpha_c,\beta_c \sim Bernoulli(\theta_c), for \ s = 1,...,N^S,c=1,...N^C$$
+and
+$$logit(\theta_c) = \alpha_c + \beta_cx_{sc}, for \ s = 1,...,N^S,c=1,...N^C.$$
+
+For $\alpha = (\alpha_1,...,\alpha_{N^C})$ and $\beta = (\beta_1,...,\beta_{N^C})$, we assume
+
+$$p(\alpha, \beta \mid \mu_{\alpha},\mu_{\beta},\sigma^2_{\alpha},\sigma^2_{\beta}) = \prod_{c=1}^{N^C}p(\alpha_c\mid\mu_{\alpha},\sigma^2_{\alpha})p(\beta_c\mid\mu_{\beta},\sigma^2_{\beta}),$$ where for all $c = 1,...,N^C$,
+$$\alpha_c|\mu_{\alpha},\sigma^2_{\alpha}\sim Normal(\mu_{\alpha},\sigma^2_{\alpha})$$ 
+and
+$$\beta_c|\mu_{\beta},\sigma^2_{\beta}\sim Normal(\mu_{\beta},\sigma^2_{\beta}).$$
+
+Finally,
+
+$$p(\mu_{\alpha},\sigma^2_{\alpha},\mu_{\beta},\sigma^2_{\beta}) = p(\mu_{\alpha})p(\sigma^2_{\alpha})p(\mu_{\beta})p(\sigma^2_{\beta}).$$
+where $\mu_{\alpha} \sim Normal(0,20), \sigma_{\alpha} \sim Unif(0,5) \mu_{\beta} \sim Normal(0,20),$ and $\sigma_{\beta} \sim Unif(0,5)$
+
+# Define all variables
+
+$Y_{sc}$ is the infected outcome of the diagnostic for subject s located in country c,
+
+$x_{sc}$ is the corresponding result of the EZK test, either 1 or 0,
+
+$\alpha_c$ is the baseline log odds of being infected according to the EZK test for each country c,
+
+$\beta_c$ is the effect of the EZK test result on the log odds of being infected for each country c,
+
+$\theta_c$ is the probability of being infected according to the EZK test for each subject in each country,
+
+$\mu_\alpha$ is the mean of the prior distribution for $\alpha$,
+
+$\mu_\beta$ is the mean of the prior distribution for $\beta$,
+
+$\sigma^2_\alpha$ is the variance of the prior distribution for $\alpha$,
+
+$\sigma^2_\beta$ is the variance of the prior distribution for $\beta$. 
+
+$\sigma^2_\alpha$ and $\sigma^2_\beta$ capture the uncertainty in the log odds of being infected. The highly accurate test to capture if a subject is truly infected still has some variance.
+
+$N^S$ is the number of test subjects.
+
+$N^C$ is the number of countries.
+
+Our parameters will be $\alpha, \beta, \mu_\alpha, \mu_\beta,\sigma_\alpha,$ and $\sigma_\beta.$
+
+# Model Fitting
+
+Before we fit our model, we must first consider how our data is represented. Our table is listed with the columns, 'Infected', 'EZK', and 'Country' with the rows being each individual sample. Country is listed in characters so we'll first convert country into numbers. After that, we want JAGS to be able to use our table so we'll create a list with how many samples there are, the number of countries, the data on which patients are infected or not, the data on their EZK test, and the country of the given sample.
+
+From there we can create our model:
+
+Initial values:
+
+$\alpha_c = 0$ for $c=1,...,N^C,$
+
+$\beta_c = 0$ for $c=1,...,N^c,$
+
+$\mu_\alpha = 0,$
+
+$\sigma_\alpha = 1$,
+
+$\mu_\beta = 0,$
+
+$\sigma_\beta = 1$.
+
+Iterations = 15000.
+
+## Post run:
+
+To check our convergence we can look at the Gelman-Rubin diagnostic statistic as well as our trace plots. The Gelman-Rubin diagnostic (see Appendix) displays how every parameter is roughly 1 which suggests all our parameters have converged.
+
+We can also check our trace plots (see ParameterTracePlots.pdf) which show how each of our parameters have a consistent variance and consistent mean indicating the parameters have converged.
+
+# Interpretation
+
+Values of $\alpha$ and $\beta$ can be seen in the Appendix under Summary along with boxplots under Summary Plots. Each $\alpha$ value is between 0 and 1 except for $\sigma_\alpha$ and each $\beta$ value is between -1 and 1 except for $\sigma_\beta$. We can first look at $\mu_\alpha$ and $\alpha_c$ for $c=1,...,N^C$ and see that no $\alpha_c$ is statistically significant so we can say all $\alpha_c$ are roughly the same. We can do the same for $\mu_\beta$ and $\beta_c$ for $c=1,...,N^C$ and find that the country is not significant for determining if someone has K9C9 through the EZK test. 
+
+Since all values are roughly 0, this means:
+
+$$logit(theta_c) = \alpha_c + \beta_c \approx 0$$
+
+which means:
+
+$$invlogit(0) = 0.5.$$
+
+The EZK test has roughly a 50% chance of correctly determining if a patient is infected or not.
+
+# Conclusion
+
+The EZK test was made in hopes to be an inexpensive alternative to the expensive test for detecting K9C9. After modeling, setting initial values, and running our program, what we found was that the EZK test is not actually particularly good at determining if someone has K9C9 or does not.
+
+---
+
+# Appendix
+
+```{r, echo = FALSE, warning = FALSE, results = FALSE, message = FALSE}
+library(coda)
+library(rjags)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(reshape2)
+```
+
+```{r, echo = FALSE, warning = FALSE, results = FALSE, message = FALSE}
+y=read.table('flu.txt', header = TRUE)
+set.seed(1)
+```
+
+```{r, echo = FALSE, warning = FALSE, results = FALSE, message = FALSE}
+y$Country = as.numeric(factor(y$Country))
+EZKList = list(
+              Ns = length(y$Infected), 
+              Nc = 10, 
+              Infected = y$Infected,
+              x = y$EZK,
+              country = y$Country
+              )
+```
+
+```{r, echo = FALSE, warning = FALSE, results = FALSE, message = FALSE}
+# Initial Values
+
+Nc = 10
+
+inits = list(
+  alpha = rep(0, Nc),
+  beta = rep(0, Nc),
+  mu_alpha = 0,
+  sigma_alpha = 1,
+  mu_beta = 0,
+  sigma_beta = 1
+)
+
+# Parameters
+
+parameters = c("alpha",
+               "beta",
+               "mu_alpha",
+               "sigma_alpha",
+               "mu_beta",
+               "sigma_beta")
+
+# Model
+model <- "model {
+  # Priors
+  for (c in 1:Nc) {
+    alpha[c] ~ dnorm(mu_alpha, tau2_alpha)
+    beta[c] ~ dnorm(mu_beta, tau2_beta)
+  }
+
+  mu_alpha ~ dnorm(0, 1/20)
+  sigma_alpha ~ dunif(0, 5)
+  mu_beta ~ dnorm(0, 1/20)
+  sigma_beta ~ dunif(0, 5)
+  
+  tau2_alpha = pow(sigma_alpha, -2)
+  tau2_beta = pow(sigma_beta, -2)
+  
+  # Likelihood
+  for (s in 1:Ns) {
+    logit(theta[s]) = alpha[country[s]] + beta[country[s]] * x[s]
+    Y[s] ~ dbern(theta[s])
+  }
+}
+"
+
+# Run the model
+n_adapt = 2500
+n_burnin = 2500
+n_chains = 2
+n_savedsteps = 5000
+n_thin = 1
+
+n_iter = 10000
+```
+
+```{r, echo = FALSE, warning = FALSE, results = FALSE, message = FALSE}
+model <- jags.model(textConnection(model), data = EZKList, inits = inits, n.chains = n_chains, n.adapt = n_adapt)
+update(model, n.iter = n_burnin)
+fit.samples=coda.samples(model,parameters,n.iter=n_iter,thin = n_thin)
+```
+
+## Convergence
+```{r, echo = FALSE, warning = FALSE}
+gelman.diag(fit.samples)
+```
+All values converge since their point estimate is 1.
+
+## Summary
+
+```{r, echo = FALSE, warning = FALSE}
+pdf("ParameterTracePlots.pdf", width = 12, height = 6)
+plot(fit.samples)
+summary(fit.samples)
+```
+
+## Summary Plots
+
+```{r, echo = FALSE, warning = FALSE}
+mcmcChainDF <- data.frame( as.matrix(fit.samples,
+iters = n_iter,
+chains = n_chains ) )
+
+alphas <- melt( mcmcChainDF,
+id.vars = "ITER",
+measure.vars = c("alpha.1.",
+"alpha.2.",
+"alpha.3.",
+"alpha.4.",
+"alpha.5.",
+"alpha.6.",
+"alpha.7.",
+"alpha.8.",
+"alpha.9.",
+"alpha.10.",
+"mu_alpha",
+"sigma_alpha"))
+ggplot(alphas,
+aes(x = variable, y = value )) +
+geom_boxplot() +
+ylab( "posterior" ) +
+xlab( "" )
+
+betas <- melt( mcmcChainDF,
+id.vars = "ITER",
+measure.vars = c("beta.1.",
+"beta.2.",
+"beta.3.",
+"beta.4.",
+"beta.5.",
+"beta.6.",
+"beta.7.",
+"beta.8.",
+"beta.9.",
+"beta.10.",
+"mu_beta",
+"sigma_beta"))
+ggplot(betas,
+aes(x = variable, y = value )) +
+geom_boxplot() +
+ylab( "posterior" ) +
+xlab( "" )
+```
